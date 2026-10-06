@@ -4,6 +4,8 @@
 
 코딩 에이전트가 변경에 필요한 검증을 고르고, 같은 검사를 불필요하게 반복하지 않도록 돕는 **테스트 운영 스킬**이다. 작은 프로젝트는 전체 빠른 검사를 그대로 실행하고, 선택 실행의 이득이 확인될 때만 구조를 확장한다.
 
+**Codex · Claude Code · Antigravity · Cursor**에서 같은 규칙을 사용한다. 도구별로 달라지는 것은 설치 경로와 호출 방법이다.
+
 <picture>
   <source media="(max-width: 600px)" srcset="docs/overview-mobile.svg">
   <img src="docs/overview.svg" alt="adaptive-testing 구조: 기본 규칙을 읽고 Simple, Light, Selective 후보 중 하나를 정한다. 위험에 따른 검증은 항상 추가하며, 복잡한 영향 분석은 필요할 때만 상세 문서를 읽는다.">
@@ -11,59 +13,52 @@
 
 > **그림을 텍스트로 읽으면:** `SKILL.md`가 기본 규칙을 제공한다. 전체 빠른 검사가 짧으면 그대로 실행한다. 길어지면 기존 필터를 활용하고, 반복 비용이 커지면 선택 실행의 이득을 계산한다. 변경 위험에 필요한 검증은 모든 모드에 적용한다. 결과 재사용은 검증 입력이 일치할 때만 허용한다.
 
-[시작하기](#시작하기) · [파일 구조](#파일-구조) · [전환 기준](#전환-기준) · [실행 흐름](#실행-흐름) · [지켜야 할 검증](#지켜야-할-검증)
+[시작하기](#시작하기) · [도구별 호환성](docs/compatibility.md) · [파일 구조](#파일-구조) · [전환 기준](#전환-기준) · [실행 흐름](#실행-흐름)
 
 ## 시작하기
 
 이 저장소에는 테스트 실행기나 자동 영향 분석 엔진이 없다. `adaptive-testing`은 에이전트가 기존 프로젝트의 명령과 테스트를 활용할 때 따르는 지침이다. 설치만으로 Git hook이나 CI 설정이 바뀌지는 않는다.
 
-먼저 저장소를 받는다.
+먼저 저장소를 받는다. 스킬 자체에는 런타임 의존성이 없으며, 아래의 선택적 설치 도구만 Python 3.9 이상을 사용한다. 추가 패키지는 필요 없다.
 
 ```sh
 git clone https://github.com/kcc920926-droid/test.zip.git
 cd test.zip
 ```
 
-Codex의 개인 스킬 경로에 `skills/adaptive-testing` 폴더를 복사한다. 아래는 `$CODEX_HOME/skills`, 환경 변수가 없으면 `~/.codex/skills`를 사용하는 설치 예다.
-
-<details>
-<summary>Windows · PowerShell</summary>
-
-```powershell
-$skillRoot = if ($env:CODEX_HOME) {
-  Join-Path $env:CODEX_HOME 'skills'
-} else {
-  Join-Path $HOME '.codex/skills'
-}
-New-Item -ItemType Directory -Force -Path $skillRoot | Out-Null
-Copy-Item -LiteralPath './skills/adaptive-testing' -Destination $skillRoot -Recurse
-```
-
-</details>
-
-<details>
-<summary>macOS / Linux · Shell</summary>
+사용할 도구를 골라 **실제 작업 프로젝트**에 설치한다. `../my-project`는 이미 존재하는 프로젝트 경로로 바꾼다. 다음 명령 중 필요한 것만 실행하면 된다.
 
 ```sh
-skill_root="${CODEX_HOME:-$HOME/.codex}/skills"
-mkdir -p "$skill_root"
-cp -R skills/adaptive-testing "$skill_root/"
+python scripts/install.py --tool claude-code --project ../my-project
+python scripts/install.py --tool antigravity --project ../my-project
+python scripts/install.py --tool codex --project ../my-project
+python scripts/install.py --tool cursor --project ../my-project
 ```
 
-</details>
+Windows에서도 같은 명령을 사용한다. 환경에 따라 `python`을 `py -3` 또는 `python3`로 바꾼다. 경로에 공백이 있으면 따옴표로 감싼다.
 
-프로젝트별로 공유하려면 저장소의 `.agents/skills/adaptive-testing` 경로에 같은 스킬 폴더를 둔다. `.agents/skills`는 [공식 문서의 프로젝트 스킬 검색 경로](https://learn.chatgpt.com/docs/build-skills#where-codex-loads-local-skills)다.
+| 도구 | 프로젝트에 생성되는 경로 | 호출 예 |
+| --- | --- | --- |
+| Codex | `.agents/skills/adaptive-testing/` | `$adaptive-testing 이번 변경을 검증해줘.` |
+| Claude Code | `.claude/skills/adaptive-testing/` | `/adaptive-testing 이번 변경을 검증해줘.` |
+| Antigravity 2.0 / IDE | `.agents/skills/adaptive-testing/` | `adaptive-testing 스킬로 이번 변경을 검증해줘.` |
+| Antigravity CLI | `.agents/skills/adaptive-testing/` | `/adaptive-testing 이번 변경을 검증해줘.` |
+| Cursor | `.cursor/skills/adaptive-testing/` | Agent 채팅에서 `/` 입력 후 `adaptive-testing` 선택 |
 
-사용할 때는 다음처럼 요청한다.
+프로젝트 수준의 Codex와 Antigravity는 같은 `.agents/skills` 폴더를 공유하므로 한 번만 설치해도 된다. 도구별 공식 경로·호출법과 버전 차이는 [호환성 안내](docs/compatibility.md)에 정리했다.
 
-```text
-$adaptive-testing 이번 변경을 검증해줘.
+프로젝트에 쓰기 전에 설치 위치와 파일만 확인하려면 `--dry-run`, 현재 사용자 전체에 설치하려면 `--user`를 사용한다.
+
+```sh
+python scripts/install.py --tool claude-code --project ../my-project --dry-run
+python scripts/install.py --tool claude-code --user
+python scripts/install.py --tool antigravity --user
+python scripts/install.py --tool antigravity-cli --user
 ```
 
-```text
-$adaptive-testing 테스트 대기 시간이 길어. 기존 실행 기록으로
-단순 실행을 유지할지, 선택 실행을 도입할지 판단해줘.
-```
+설치 도구는 기존 공통 규칙이 같으면 아무것도 바꾸지 않고, 내용이 다르거나 불완전하면 덮어쓰지 않고 종료한다. 기존 버전 업데이트는 변경 내용을 비교한 뒤 수동으로 반영한다. `CLAUDE.md`, `GEMINI.md`, hook, CI 설정은 수정하지 않는다.
+
+Python 없이 폴더를 복사하는 방법, 기존 Codex 경로, 다른 Agent Skills 도구, 스킬 기능이 없는 도구에서의 사용법도 [호환성 안내](docs/compatibility.md)에 있다.
 
 ## 파일 구조
 
@@ -71,13 +66,18 @@ $adaptive-testing 테스트 대기 시간이 길어. 기존 실행 기록으로
 test.zip/
 ├── README.md                          사람이 읽는 구조와 사용법
 ├── docs/
+│   ├── compatibility.md              도구별 설치·호출·확인 방법
 │   ├── overview.svg                   데스크톱용 설명 그림
 │   └── overview-mobile.svg            모바일용 설명 그림
+├── scripts/
+│   └── install.py                     선택한 도구의 경로로 스킬 복사
+├── tests/
+│   └── test_install.py                경로·충돌·파일 보존 검사
 └── skills/
     └── adaptive-testing/
         ├── SKILL.md                   기본 판단과 실행 규칙
         ├── agents/
-        │   └── openai.yaml            표시 이름과 짧은 설명
+        │   └── openai.yaml            Codex 전용 표시 정보 · 선택 사항
         └── references/
             └── selective-validation.md  선택 실행의 상세 기준
 ```
@@ -86,9 +86,12 @@ test.zip/
 | --- | --- | --- |
 | [SKILL.md](skills/adaptive-testing/SKILL.md) | 모드 선택, 위험별 검증, 중복 실행 방지 | 스킬 적용 시 |
 | [selective-validation.md](skills/adaptive-testing/references/selective-validation.md) | 비용 계산, 영향 범위, 캐시·CI 적용 조건 | 선택 실행을 검토하거나 불확실성을 해소할 때 |
-| [openai.yaml](skills/adaptive-testing/agents/openai.yaml) | 스킬 목록에 표시할 이름과 설명 | Codex가 스킬 정보를 표시할 때 |
+| [openai.yaml](skills/adaptive-testing/agents/openai.yaml) | Codex 전용 표시 이름과 설명. 공통 실행에 필요하지 않음 | Codex가 스킬 정보를 표시할 때 |
+| [install.py](scripts/install.py) | 같은 원본을 도구별 검색 경로에 복사. Codex 신규 설치에만 UI 메타데이터 추가 | 설치할 때만 실행 |
 
 상세 문서는 필요할 때만 읽는다. 작은 변경마다 영향 분석 체계를 설계하거나 긴 검사 계획을 작성하지 않도록 구성했다.
+
+스킬 본문을 도구별로 복제·수정하지 않는다. 공통 `SKILL.md`와 `references/`가 판단 규칙의 원본이고, 도구별 설치 정보는 README와 호환성 문서에서 관리한다.
 
 ## 전환 기준
 
@@ -156,6 +159,14 @@ test.zip/
 - 선택 실행 도입 초기에는 넓은 CI 검증을 유지하고 누락 여부를 비교한다.
 
 ## 설명의 근거
+
+설치 도구의 회귀 검사는 다음 명령으로 실행한다. 임시 폴더를 사용하며 실제 사용자 스킬 폴더에는 쓰지 않는다.
+
+```sh
+python -m unittest discover -s tests -v
+```
+
+검증 범위는 설치 경로·파일 내용·기존 파일 보존·문서 및 SVG 형식이다. Claude Code, Antigravity, Cursor의 실제 앱 세션에서 자동 선택과 테스트 실행까지 검증한 것은 아니다.
 
 이 README와 그림은 저장소에 포함된 [기본 규칙](skills/adaptive-testing/SKILL.md)과 [상세 기준](skills/adaptive-testing/references/selective-validation.md)을 설명한다. 특정 프로젝트의 성능 개선을 측정한 결과는 아니다.
 

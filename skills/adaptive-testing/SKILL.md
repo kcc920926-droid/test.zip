@@ -7,6 +7,8 @@ description: "Choose and run proportionate validation for code changes, or optim
 
 Minimize time to trustworthy feedback, including agent decision time, startup, retries, and maintenance. Preserve required checks and coverage. Do not introduce a testing framework, modify hooks/CI, or weaken merge gates just to perform an ordinary code change.
 
+These instructions are host-independent. Use the current agent's available file, shell, and test tools; no Codex-specific API or invocation syntax is required. Resolve supporting references relative to this skill directory. `agents/openai.yaml` is optional Codex UI metadata, not an execution dependency. Follow applicable host and project instructions, including the relevant `AGENTS.md`, `CLAUDE.md`, or `GEMINI.md`; this skill does not grant additional tool permissions.
+
 ## Cheap default
 
 Read applicable project instructions and the existing test commands once. Check what commands actually execute: a command named `test` may include full E2E. Use existing duration records if available; otherwise observe the next necessary run. Do not run benchmarks merely to choose a policy.
