@@ -1,0 +1,3 @@
+interface:
+  display_name: "규모 적응형 테스트"
+  short_description: "빠른 전체 검사부터 시작하고 실측 비용에 따라 선택 실행으로 전환"
